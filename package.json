@@ -4,7 +4,8 @@
   "description": "",
   "main": "src/script.js",
   "scripts": {
-    "start": "webpack serve --open"
+    "start": "webpack serve --open",
+    "build": "webpack --mode production"
   },
   "keywords": [],
   "author": "",
@@ -30,4 +31,5 @@
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
   }
+  
 }
