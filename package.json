@@ -1,0 +1,33 @@
+{
+  "name": "gravity_sim",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/script.js",
+  "scripts": {
+    "start": "webpack serve --open"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ammo.js": "^0.0.10",
+    "cannon": "^0.6.2",
+    "cannon-es": "^0.20.0",
+    "gpu.js": "^2.16.0",
+    "noisejs": "^2.1.0",
+    "stats.js": "^0.17.0",
+    "three": "^0.158.0",
+    "three-orbit-controls": "^82.1.0"
+  },
+  "devDependencies": {
+    "css-loader": "^6.8.1",
+    "dat.gui": "^0.7.9",
+    "gpu": "^1.0.0",
+    "html-webpack-plugin": "^5.5.3",
+    "stats": "^1.0.0",
+    "style-loader": "^3.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1"
+  }
+}
