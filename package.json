@@ -23,6 +23,7 @@
   "devDependencies": {
     "css-loader": "^6.8.1",
     "dat.gui": "^0.7.9",
+    "file-loader": "^6.2.0",
     "gpu": "^1.0.0",
     "html-webpack-plugin": "^5.5.3",
     "stats": "^1.0.0",
@@ -31,5 +32,4 @@
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
   }
-  
 }
