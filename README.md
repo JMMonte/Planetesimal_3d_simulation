@@ -1,4 +1,6 @@
-# Gravity Simulator using THREEJs + CANNONJS 
+# Gravity Simulator using THREEJs + CANNONJS
+
+![Alt text](./images/three_body_problem.png)
 
 ## Description
 
@@ -11,24 +13,37 @@ Gravity Simulator is a 3D simulation built with Three.js and CANNON.js, providin
 - Interactive GUI with dat.GUI for real-time parameter adjustments.
 - Customizable lighting and shadows for a more immersive experience.
 - Effects composer with SSAO for enhanced visual depth.
+- throw rocks or collection of rocks by clicking around the screen. Try to make a stable orbit!
+
+| ![Collapsing rocks](./images/collapse.png) | ![Two systems orbiting each other](./images/two_bodies.png) |
+|:---:|:---:|
+| *Collapsing rocks* | *Two systems orbiting each other* |
+
 
 ## Setup
 
 Follow these steps to set up the simulation locally:
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/JMMonte/gravity_sim.git
    ```
+
 2. Navigate to the project directory:
+
    ```bash
    cd gravity_sim
    ```
+
 3. Install the necessary dependencies:
+
    ```bash
    npm install
    ```
+
 4. Launch the development server:
+
    ```bash
    npm run start
    ```
