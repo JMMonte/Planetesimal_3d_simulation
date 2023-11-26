@@ -1,15 +1,15 @@
-const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const path = require('path');
 
 module.exports = {
     entry: './src/script.js',
     output: {
         filename: 'bundle.js',
-        path: path.resolve(__dirname, 'dist'),
+        path: path.resolve(__dirname, 'public'), // updated this line
     },
     devServer: {
         static: {
-            directory: path.join(__dirname, 'dist'),
+            directory: path.join(__dirname, 'public'), // updated this line
         },
         compress: true,
         port: 9000,
@@ -32,11 +32,4 @@ module.exports = {
             },
         ],
     },
-    resolve: {
-        fallback: {
-            fs: false, // Ammo.js may try to require 'fs'
-            path: false, // Ammo.js may try to require 'path'
-        },
-    },
-    mode: 'development'
 };

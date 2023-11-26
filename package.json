@@ -5,7 +5,7 @@
   "main": "src/script.js",
   "scripts": {
     "start": "webpack serve --open",
-    "build": "webpack --mode production"
+    "build": "webpack --mode production --output-path public"
   },
   "keywords": [],
   "author": "",
