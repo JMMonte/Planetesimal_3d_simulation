@@ -7,6 +7,7 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import * as CANNON from 'cannon';
 
 // Setup ------------------------------------
@@ -73,22 +74,26 @@ directionalLights.forEach((light, index) => {
     lightFolder.add(dirLight.position, 'z', -5, 5, 0.01).name('Z Position');
     lightFolder.add(dirLight, 'intensity', 0, 100, 0.01).name('Intensity');
     lightFolder.add(dirLight, 'castShadow').name('Cast Shadow');
-    
+
     scene.add(dirLight);
 
-    const helper = new THREE.CameraHelper(dirLight.shadow.camera);
-    scene.add(helper);
+    // const helper = new THREE.CameraHelper(dirLight.shadow.camera);
+    // scene.add(helper);
 });
+
+// Export and Import Buttons -------------------------------
+gui.add({exportCrystals: () => exportCrystals(simulation.bodies, simulation.meshes)}, 'exportCrystals').name('Export Crystals');
+gui.add({importCrystals: () => document.getElementById('fileInput').click()}, 'importCrystals').name('Import Crystals');
 
 
 // Simulation --------------------------------
 const gravityConstant = 6.67430;
-const sphereCount = 2500;
-const worldsize = 1500;
+const sphereCount = 850;
+const worldsize = 450;
 const velocityX = 20;
 const velocityY = 20;
 const velocityZ = 20;
-const simulation = new Simulation(gravityConstant * 10e-6, sphereCount, worldsize, velocityX, velocityY, velocityZ);
+const simulation = new Simulation(gravityConstant * 10e-6, sphereCount, worldsize, velocityX, velocityY, velocityZ, scene);
 scene.add(simulation.getMeshes());
 
 // GUI for simulation properties
@@ -110,6 +115,23 @@ const simulationProperties = {
     }
 };
 
+// add helper grid
+const gridHelper = new THREE.GridHelper(1000, 100);
+scene.add(gridHelper);
+
+// GUI checkbox to show/hide gridHelper
+const gridHelperCheckbox = gui.add({ showGridHelper: true }, 'showGridHelper').name('Show Grid Helper');
+gridHelperCheckbox.onChange((value) => {
+    gridHelper.visible = value;
+});
+
+let colormapping = false;
+// GUI checkbox to show/hide color mapping
+const colorMappingCheckbox = gui.add({ showColorMapping: false }, 'showColorMapping').name('See gravity');
+colorMappingCheckbox.onChange((value) => {
+    colormapping = value;
+});
+
 // Add GUI controls --------------------------------
 addSimulationGUI(gui, simulation, simulationProperties);
 
@@ -127,17 +149,25 @@ ssaoPass.minDistance = 0.005;
 ssaoPass.maxDistance = 0.1;
 composer.addPass(ssaoPass);
 
+// add bloom pass
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(sizes.width, sizes.height), 1.5, 0.4, 0.85);
+bloomPass.threshold = 0.1;
+bloomPass.strength = 0.2;
+bloomPass.radius = 1.5;
+composer.addPass(bloomPass);
+
+
+
 
 // Animation Loop -------------------------------
 const animate = () => {
     stats.begin();
-    if (simulationProperties.running) simulation.update(1 / 60);
+    if (simulationProperties.running) simulation.update(1 / 60, colormapping);
     renderer.render(scene, camera);
     stats.end();
     composer.render();
     requestAnimationFrame(animate);
 };
-
 
 // Helper Functions -----------------------------
 function addSimulationGUI(gui, simulation, props) {
@@ -211,15 +241,77 @@ function toggleSimulation(running) {
 let isDragging = false;
 let mouseDown = false;
 
+// Export Crystals ------------------------------
+function exportCrystals(bodies, meshes) {
+    const crystalData = bodies.map((body, index) => {
+        const mesh = meshes[index];
+        return {
+            mass: body.mass,
+            position: { x: body.position.x, y: body.position.y, z: body.position.z },
+            velocity: { x: body.velocity.x, y: body.velocity.y, z: body.velocity.z },
+            orientation: { x: body.quaternion.x, y: body.quaternion.y, z: body.quaternion.z, w: body.quaternion.w },
+            geometry: mesh.geometry.toJSON() // Serializing Three.js mesh geometry
+        };
+    });
+
+    const json = JSON.stringify(crystalData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    // Create a link and trigger a download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'crystals.json';
+    a.click();
+
+    // Cleanup
+    URL.revokeObjectURL(url);
+}
+
+document.getElementById('fileInput').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = JSON.parse(e.target.result);
+            importCrystals(data, simulation); // Assuming this is where the error occurs
+        };
+        reader.readAsText(file);
+    }
+});
+
+
+function importCrystals(data, simulationInstance) {
+    // Clear the current scene before importing new data
+    simulationInstance.clearScene();
+
+    data.forEach(item => {
+        if (!item.geometry) {
+            console.error('Invalid or missing geometry data', item);
+            return; // Skip this item
+        }
+        // Add the mesh to the simulation
+        simulationInstance.addMesh(item); // Assuming item contains the entire mesh data
+
+        // Recreate the physics body and add it to the simulation
+        // Assumes addBody method accepts parameters for mass, position, velocity, and orientation
+        simulationInstance.addBody(item.mass, item.position, item.velocity, item.orientation);
+    });
+
+    // Additional steps for scene update, if necessary
+}
+
+// Throw Crystals on Mouse Click ------------------
+
 // Listen for mouse down event
-canvas.addEventListener('mousedown', function() {
+canvas.addEventListener('mousedown', function () {
     // When the mouse is pressed down, we assume it might be a click
     mouseDown = true;
     isDragging = false; // Reset the dragging flag
 }, false);
 
 // Listen for mouse move event
-canvas.addEventListener('mousemove', function(event) {
+canvas.addEventListener('mousemove', function (event) {
     if (mouseDown) {
         // If the mouse is down and moving, consider it dragging
         isDragging = true;
@@ -227,7 +319,7 @@ canvas.addEventListener('mousemove', function(event) {
 }, false);
 
 // Listen for mouse up event
-canvas.addEventListener('mouseup', function(event) {
+canvas.addEventListener('mouseup', function (event) {
     mouseDown = false; // Reset mouse down flag
     if (!isDragging) {
         // If the mouse is released and dragging is false, throw a crystal
@@ -246,7 +338,6 @@ function onCanvasClick(event) {
     throwCrystal(x, y);
 }
 
-
 function throwCrystal(x, y) {
     // Create a raycaster with the camera and the mouse position
     const raycaster = new THREE.Raycaster();
@@ -259,50 +350,58 @@ function throwCrystal(x, y) {
     const cannonDirection = new CANNON.Vec3(direction.x, direction.y, direction.z);
 
     // Calculate the base velocity from the direction and throw force
-    const baseVelocity = cannonDirection.scale(simulationProperties.throwForce);
+    let baseVelocity = cannonDirection.scale(simulationProperties.throwForce);
 
-    for (let i = 0; i < simulationProperties.amountOfCrystals; i++) {
-        // Randomize position within the specified radius
-        const angle = Math.random() * Math.PI * 2;
-        const u = Math.random() + Math.random();
-        const r = u > 1 ? 2 - u : u;
-        const offset = new CANNON.Vec3(
-            simulationProperties.radiusOfThrow * r * Math.cos(angle),
-            simulationProperties.radiusOfThrow * r * Math.sin(angle),
-            (Math.random() - 0.5) * 2 * simulationProperties.radiusOfThrow
-        );
+    if (simulationProperties.amountOfCrystals > 1) {
+        for (let i = 0; i < simulationProperties.amountOfCrystals; i++) {
+            // Randomize position within the specified radius
+            const angle = Math.random() * Math.PI * 2;
+            const u = Math.random() + Math.random();
+            const r = u > 1 ? 2 - u : u;
+            const offset = new CANNON.Vec3(
+                simulationProperties.radiusOfThrow * r * Math.cos(angle),
+                simulationProperties.radiusOfThrow * r * Math.sin(angle),
+                (Math.random() - 0.5) * 2 * simulationProperties.radiusOfThrow
+            );
 
-        // Adjust the starting position to be spread within the radius of throw
-        const startPosition = new CANNON.Vec3().copy(camera.position).vadd(offset);
+            // Adjust the starting position to be spread within the radius of throw
+            const startPosition = new CANNON.Vec3().copy(camera.position).vadd(offset);
 
-        // Create a random orientation for the crystal
-        const orientation = new CANNON.Vec3(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
+            // Create a random orientation for the crystal
+            const orientation = new CANNON.Vec3(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI,
+                Math.random() * Math.PI
+            );
 
-        // Define the size and shape of the crystal
+            // Define the size and shape of the crystal
+            const baseRadius = 3 * (0.5 + Math.random());
+            const height = 3 * (1 + Math.random() * 2); // Height is 1 to 3 times the base radius
+            const radialSegments = Math.floor(3 + Math.random() * 5); // Randomly choose between 3 and 7 sides
+            const density = 2100; // example density for crystals
+
+            // Adjust velocity for each crystal to vary the throw pattern in the direction of the throw
+            const velocityVariance = new CANNON.Vec3(
+                (Math.random() - 0.5) * 2 * baseVelocity.x,
+                (Math.random() - 0.5) * 2 * baseVelocity.y,
+                (Math.random() - 0.5) * 2 * baseVelocity.z
+            );
+            const velocity = baseVelocity.vadd(velocityVariance);
+
+            // Call the addCrystal method with the calculated parameters
+            simulation.addCrystal(baseRadius, height, radialSegments, startPosition, orientation, density, velocity);
+        }
+    } else {
+        // For a single crystal, use the camera position and direction without randomization
+        const startPosition = new CANNON.Vec3().copy(camera.position);
+        const orientation = new CANNON.Vec3(0, 0, 0); // No rotation
         const baseRadius = 3 * (0.5 + Math.random());
         const height = 3 * (1 + Math.random() * 2); // Height is 1 to 3 times the base radius
         const radialSegments = Math.floor(3 + Math.random() * 5); // Randomly choose between 3 and 7 sides
         const density = 2100; // example density for crystals
 
-        // Adjust velocity for each crystal to vary the throw pattern in the direction of the throw
-        const velocityVariance = new CANNON.Vec3(
-            (Math.random() - 0.5) * 2 * baseVelocity.x,
-            (Math.random() - 0.5) * 2 * baseVelocity.y,
-            (Math.random() - 0.5) * 2 * baseVelocity.z
-        );
-        const velocity = baseVelocity.vadd(velocityVariance);
-
         // Call the addCrystal method with the calculated parameters
-        simulation.addCrystal(baseRadius, height, radialSegments, startPosition, orientation, density, velocity);
-
-        // After adding the crystal, you may need to perform additional steps to add it to the simulation
-        // For example:
-        // simulation.addBody(crystalBody); // If you have such a function
-        // scene.add(crystalMesh); // And add the mesh to the scene
+        simulation.addCrystal(baseRadius, height, radialSegments, startPosition, orientation, density, baseVelocity);
     }
 }
 

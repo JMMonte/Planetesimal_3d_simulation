@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import Octree from './octree.js';
 
 class Simulation {
-    constructor(gravityConstant, sphereCount, worldSize, velocityX, velocityY, velocityZ) {
+    constructor(gravityConstant, sphereCount, worldSize, velocityX, velocityY, velocityZ, scene) {
+        this.scene = scene;
         this.gravityConstant = gravityConstant;
         this.worldSize = worldSize;
         this.sphereGroup = new THREE.Group();
@@ -50,6 +51,27 @@ class Simulation {
         });
     }
 
+    clearScene() {
+        // Remove all Cannon.js bodies
+        while (this.world.bodies.length > 0) {
+            this.world.removeBody(this.world.bodies[0]);
+        }
+        this.bodies = [];
+
+        // Remove all Three.js objects
+        while (this.scene.children.length > 0) {
+            const object = this.scene.children[0];
+            if (object.isMesh) {
+                object.geometry.dispose(); // Dispose geometry
+                if (object.material.isMaterial) {
+                    object.material.dispose(); // Dispose material
+                }
+                this.scene.remove(object); // Remove from scene
+            }
+        }
+        this.meshes = [];
+    }
+
     restart() {
         // Remove all meshes from the Three.js scene
         this.meshes.forEach(mesh => {
@@ -64,7 +86,7 @@ class Simulation {
         this.bodies = []; // Clear the bodies array
     
         // Ensure sphereCount is correctly defined
-        this.sphereCount = this.sphereCount || 2500; // Set default if not defined
+        this.sphereCount = this.sphereCount || 1500; // Set default if not defined
     
         // Re-add crystals to the simulation
         this.addCrystals(this.sphereCount, 2000); // Assuming 2000 is the desired density
@@ -77,14 +99,8 @@ class Simulation {
                 position: body.position
             });
         });
-    
-        // If you have any other state to reset, do so here
-    
         // Important: Update the scene with the new meshes
         this.meshes.forEach(mesh => this.sphereGroup.add(mesh));
-    
-        // Also, if the renderer or scene needs to be updated, do it here
-        // renderer.render(scene, camera); // Only if necessary
     }
     
 // ----------------- Crystal -----------------
@@ -108,7 +124,12 @@ class Simulation {
         crystalGeometry.rotateZ(eulerRotation.z);
     
         // Material and mesh creation
-        const crystalMaterial = new THREE.MeshPhongMaterial({ color: 0x7777ff, flatShading: true });
+        const crystalMaterial = new THREE.MeshPhongMaterial({
+            color: new THREE.Color(0x808080),
+            specular: new THREE.Color(0xffffff),
+            shininess: 30,
+            flatShading: true,
+        });
         const crystalMesh = new THREE.Mesh(crystalGeometry, crystalMaterial);
 
         // Add shadow
@@ -201,16 +222,62 @@ class Simulation {
         });
     
         return maxAccelerationMagnitude;
-    }    
+    }
 
-    updateColor(acceleration, maxAcceleration) {
-        // Update the color of current sphere based on its acceleration vs the maximum acceleration of all spheres
-        const color = new THREE.Color();
-        // Invert the mapping: higher acceleration gives a lower hue value (closer to red)
-        const hue = 240 - (240 * (Math.max(0, Math.min(1, acceleration / maxAcceleration))));
-        color.setHSL(hue / 360, 1.0, 0.5);
-        return color;
-    }    
+    // ----------------- IMPORT -----------------
+
+    addBody(mass, position, velocity, orientation) {
+        // Create Cannon.js body
+        const body = new CANNON.Body({
+            mass: mass, // Set mass
+            position: new CANNON.Vec3(position.x, position.y, position.z),
+            velocity: new CANNON.Vec3(velocity.x, velocity.y, velocity.z),
+            quaternion: new CANNON.Quaternion(orientation.x, orientation.y, orientation.z, orientation.w)
+        });
+
+        // Define the shape of the body, e.g., a sphere or box
+        const shape = new CANNON.Box(new CANNON.Vec3(/* dimensions */));
+        body.addShape(shape);
+
+        // Add body to the world
+        this.world.addBody(body);
+        this.bodies.push(body);
+    }
+
+    addMesh(meshData) {
+        if (meshData.geometry.type === 'CylinderGeometry') {
+            const geomParams = meshData.geometry;
+            const geometry = new THREE.CylinderGeometry(
+                geomParams.radiusTop,
+                geomParams.radiusBottom,
+                geomParams.height,
+                geomParams.radialSegments,
+                geomParams.heightSegments,
+                geomParams.openEnded,
+                geomParams.thetaStart,
+                geomParams.thetaLength
+            );
+    
+            const material = new THREE.MeshPhongMaterial({
+                color: new THREE.Color(0x808080), // You can adjust the material properties
+                specular: new THREE.Color(0xffffff),
+                shininess: 30,
+                flatShading: true,
+            });
+    
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(meshData.position.x, meshData.position.y, meshData.position.z);
+            mesh.quaternion.set(meshData.orientation.x, meshData.orientation.y, meshData.orientation.z, meshData.orientation.w);
+    
+            this.scene.add(mesh);
+            this.meshes.push(mesh);
+        } else {
+            console.error('Unsupported geometry type:', meshData.geometry.type);
+        }
+    }
+
+
+    // ----------------- Gravity -----------------
 
     applyGravity() {
         // 1. Construct the octree for the current positions of the bodies.
@@ -236,9 +303,9 @@ class Simulation {
     }
     
 
-// ----------------- Update -----------------
+    // ----------------- Update -----------------
 
-    update(deltaTime) {
+    update(deltaTime, enableColorMapping) {
         // Adjust deltaTime if necessary for your simulation timing
 
         // Update the octree with the current bodies
@@ -266,18 +333,30 @@ class Simulation {
             mesh.position.copy(body.position);
             mesh.quaternion.copy(body.quaternion);
             
-            // Calculate the acceleration for the body using the octree
-            const acceleration = this.calculateAcceleration(body);
+            
+            if (enableColorMapping) {
+                // Calculate the acceleration for the body using the octree
+                const acceleration = this.calculateAcceleration(body);
+                // Get the magnitude of the acceleration for color mapping
+                const accelerationMagnitude = acceleration.length();
 
-            // Get the magnitude of the acceleration for color mapping
-            const accelerationMagnitude = acceleration.length();
-
-            // Apply the color from the acceleration using updateColor
-            mesh.material.color = this.updateColor(accelerationMagnitude, maxAcceleration);
+                // Apply the color from the acceleration using updateColor
+                mesh.material.color = this.updateColor(accelerationMagnitude, maxAcceleration);
+            } else {
+                // Reset the color to the default
+                mesh.material.color = new THREE.Color(0x808080);
+            }
         }
     }
 
-
+    updateColor(acceleration, maxAcceleration) {
+        // Update the color of current crystal based on its acceleration vs the maximum acceleration of all crystals.
+        const color = new THREE.Color();
+        // Invert the mapping: higher acceleration gives a lower hue value (closer to red)
+        const hue = 240 - (240 * (Math.max(0, Math.min(1, acceleration / maxAcceleration))));
+        color.setHSL(hue / 360, 1.0, 0.5);
+        return color;
+    }
 
     getMeshes() {
         return this.sphereGroup;
