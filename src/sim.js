@@ -11,6 +11,7 @@ class Simulation {
         this.radius = 3;
         this.meshes = [];
         this.bodies = [];
+        this.sphereCount = sphereCount;
 
         // Velocity for the initial state of the simulation
         this.velocityX = velocityX;
@@ -40,8 +41,8 @@ class Simulation {
         // Configure solver iterations for better accuracy
         this.world.solver.iterations = 2; // Number of iterations to apply at each simulation step
         this.world.solver.tolerance = 0.01; // Force solver to use more iterations to satisfy tolerance
-        this.addCrystals(sphereCount, 2000); // 5000 kg/m^3 could be a sample density for a crystal
-        this.octree = new Octree(this.worldSize, this.gravityConstant);
+        this.addCrystals(this.sphereCount, 2000); // 5000 kg/m^3 could be a sample density for a crystal
+        this.octree = new Octree(this.worldSize*5, this.gravityConstant);
 
         // sleep
         this.world.allowSleep = true;
@@ -72,7 +73,26 @@ class Simulation {
         this.meshes = [];
     }
 
+    start() {
+        // start the simulation
+        this.world.allowSleep = false;
+        this.world.bodies.forEach(body => {
+            body.sleepSpeedLimit = 0.1; // Or another appropriate value
+            body.sleepTimeLimit = 1; // Or another appropriate value
+        });
+    }
+
+    pause() {
+        // pause the simulation
+        this.world.allowSleep = true;
+        this.world.bodies.forEach(body => {
+            body.sleepSpeedLimit = 0.1; // Or another appropriate value
+            body.sleepTimeLimit = 1; // Or another appropriate value
+        });
+    }
+
     restart() {
+        // Remove
         // Remove all meshes from the Three.js scene
         this.meshes.forEach(mesh => {
             this.sphereGroup.remove(mesh);
@@ -84,10 +104,9 @@ class Simulation {
         // Remove all bodies from the Cannon.js world
         this.bodies.forEach(body => this.world.remove(body));
         this.bodies = []; // Clear the bodies array
-    
-        // Ensure sphereCount is correctly defined
-        this.sphereCount = this.sphereCount || 1500; // Set default if not defined
-    
+
+        /*--------------------------------------------*/
+        // Re-add
         // Re-add crystals to the simulation
         this.addCrystals(this.sphereCount, 2000); // Assuming 2000 is the desired density
     

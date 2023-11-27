@@ -75,31 +75,28 @@ directionalLights.forEach((light, index) => {
 
 
     // GUI for lights
-    const lightFolder = gui.addFolder(`Directional Light ${index + 1}`);
-    lightFolder.add(dirLight.position, 'x', -5, 5, 0.01).name('X Position');
-    lightFolder.add(dirLight.position, 'y', -5, 5, 0.01).name('Y Position');
-    lightFolder.add(dirLight.position, 'z', -5, 5, 0.01).name('Z Position');
-    lightFolder.add(dirLight, 'intensity', 0, 100, 0.01).name('Intensity');
-    lightFolder.add(dirLight, 'castShadow').name('Cast Shadow');
+    // const lightFolder = gui.addFolder(`Directional Light ${index + 1}`);
+    // lightFolder.add(dirLight.position, 'x', -5, 5, 0.01).name('X Position');
+    // lightFolder.add(dirLight.position, 'y', -5, 5, 0.01).name('Y Position');
+    // lightFolder.add(dirLight.position, 'z', -5, 5, 0.01).name('Z Position');
+    // lightFolder.add(dirLight, 'intensity', 0, 100, 0.01).name('Intensity');
+    // lightFolder.add(dirLight, 'castShadow').name('Cast Shadow');
 
     scene.add(dirLight);
-
-    // const helper = new THREE.CameraHelper(dirLight.shadow.camera);
-    // scene.add(helper);
 });
 
-// Export and Import Buttons -------------------------------
-gui.add({exportCrystals: () => exportCrystals(simulation.bodies, simulation.meshes)}, 'exportCrystals').name('Export Crystals');
-gui.add({importCrystals: () => document.getElementById('fileInput').click()}, 'importCrystals').name('Import Crystals');
-
+// detect if mobile device
+function isMobileDevice() {
+    return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
+};
 
 // Simulation --------------------------------
 const gravityConstant = 6.67430;
-const sphereCount = 850;
-const worldsize = 450;
-const velocityX = 20;
-const velocityY = 20;
-const velocityZ = 20;
+const sphereCount = isMobileDevice() ? 200 : 850;
+const worldsize = isMobileDevice() ? 200 : 450;
+const velocityX = isMobileDevice() ? 5 : 20;
+const velocityY = isMobileDevice() ? 5 : 20;
+const velocityZ = isMobileDevice() ? 5 : 20;
 const simulation = new Simulation(gravityConstant * 10e-6, sphereCount, worldsize, velocityX, velocityY, velocityZ, scene);
 scene.add(simulation.getMeshes());
 
@@ -126,19 +123,6 @@ const simulationProperties = {
 const gridHelper = new THREE.GridHelper(1000, 100);
 scene.add(gridHelper);
 
-// GUI checkbox to show/hide gridHelper
-const gridHelperCheckbox = gui.add({ showGridHelper: true }, 'showGridHelper').name('Show Grid Helper');
-gridHelperCheckbox.onChange((value) => {
-    gridHelper.visible = value;
-});
-
-let colormapping = false;
-// GUI checkbox to show/hide color mapping
-const colorMappingCheckbox = gui.add({ showColorMapping: false }, 'showColorMapping').name('See gravity');
-colorMappingCheckbox.onChange((value) => {
-    colormapping = value;
-});
-
 // Add GUI controls --------------------------------
 addSimulationGUI(gui, simulation, simulationProperties);
 
@@ -164,8 +148,6 @@ bloomPass.radius = 1.5;
 composer.addPass(bloomPass);
 
 
-
-
 // Animation Loop -------------------------------
 const animate = () => {
     stats.begin();
@@ -176,55 +158,70 @@ const animate = () => {
     requestAnimationFrame(animate);
 };
 
-// Helper Functions -----------------------------
-function addSimulationGUI(gui, simulation, props) {
-    gui.add(props, 'totalSpheres', 1, 10000, 1).name('Total Spheres').onChange(value => {
-        simulation.sphereCount = value;
-        simulation.restart();
-        props.running = false;
-        scene.add(simulation.getMeshes());
-    });
+// GUI and Helper Functions -----------------------------
+let colormapping = false;
 
-    gui.add(props, 'gravityConstant', 0, 60000, 0.01).name('Gravity Constant').onChange(value => {
-        simulation.gravityConstant = value * 10e-6;
-        scene.add(simulation.getMeshes());
-    });
-
-    gui.add(props, 'worldsize', 0, 10000, 1).name('World Size').onChange(value => {
-        simulation.worldSize = value;
-        simulation.restart();
-        props.running = false;
-        scene.add(simulation.getMeshes());
-    });
-
-    gui.add(props, 'velocityX', 0, 100, 1).name('Velocity X').onChange(value => {
-        simulation.velocityX = value;
-        simulation.restart();
-        props.running = false;
-        scene.add(simulation.getMeshes());
-    });
-
-    gui.add(props, 'velocityY', 0, 100, 1).name('Velocity Y').onChange(value => {
-        simulation.velocityY = value;
-        simulation.restart();
-        props.running = false;
-        scene.add(simulation.getMeshes());
-    });
-
-    gui.add(props, 'velocityZ', 0, 100, 1).name('Velocity Z').onChange(value => {
-        simulation.velocityZ = value;
-        simulation.restart();
-        props.running = false;
-        scene.add(simulation.getMeshes());
-    });
-
-    gui.add(props, 'throwForce', 0, 200, 1).name('Throw Force').onChange(props.updateThrowForce);
-    gui.add(props, 'amountOfCrystals', 1, 100, 1).name('Amount of Crystals');
-    gui.add(props, 'radiusOfThrow', 1, 50, 0.1).name('Radius of Throw');
-
-    gui.add(props, 'start').name('Start Simulation');
-    gui.add(props, 'stop').name('Stop Simulation');
+function handleSimulationChange(simulation, props, propName, value) {
+    simulation[propName] = value;
+    simulation.restart();
+    props.running = false;
+    scene.add(simulation.getMeshes());
 }
+
+function addSimulationSettingsGUI(gui, simulation, props) {
+    const simulationFolder = gui.addFolder('Simulation Settings');
+
+    simulationFolder.add(props, 'totalSpheres', 1, 10000, 1).name('Total Spheres').onChange(value => {
+        handleSimulationChange(simulation, props, 'sphereCount', value);
+    });
+
+    simulationFolder.add(props, 'gravityConstant', 0, 60000, 0.01).name('Gravity Constant').onChange(value => {
+        handleSimulationChange(simulation, props, 'gravityConstant', value * 10e-6);
+    });
+
+    simulationFolder.add(props, 'worldsize', 0, 10000, 1).name('World Size').onChange(value => {
+        handleSimulationChange(simulation, props, 'worldSize', value);
+    });
+
+    const velocityFolder = simulationFolder.addFolder('Initial Velocities');
+    velocityFolder.add(props, 'velocityX', 0, 100, 1).name('Velocity X').onChange(value => {
+        handleSimulationChange(simulation, props, 'velocityX', value);
+    });
+    velocityFolder.add(props, 'velocityY', 0, 100, 1).name('Velocity Y').onChange(value => {
+        handleSimulationChange(simulation, props, 'velocityY', value);
+    });
+    velocityFolder.add(props, 'velocityZ', 0, 100, 1).name('Velocity Z').onChange(value => {
+        handleSimulationChange(simulation, props, 'velocityZ', value);
+    });
+}
+
+function addParticleThrowGUI(gui, simulation, props) {
+    const particleThrowFolder = gui.addFolder('Particle Throw Settings');
+
+    particleThrowFolder.add(props, 'throwForce', 0, 200, 1).name('Throw Force');
+    particleThrowFolder.add(props, 'amountOfCrystals', 1, 100, 1).name('Amount of Crystals');
+    particleThrowFolder.add(props, 'radiusOfThrow', 1, 50, 0.1).name('Radius of Throw');
+
+    particleThrowFolder.add({exportCrystals: () => exportCrystals(simulation.bodies, simulation.meshes)}, 'exportCrystals').name('Export Crystals');
+    particleThrowFolder.add({importCrystals: () => document.getElementById('fileInput').click()}, 'importCrystals').name('Import Crystals');
+}
+
+function addSimulationGUI(gui, simulation, props) {
+    addSimulationSettingsGUI(gui, simulation, props);
+    addParticleThrowGUI(gui, simulation, props);
+    // Grid Helper
+    gui.add({ showGridHelper: true }, 'showGridHelper').name('Show Grid Helper').onChange(value => {
+        gridHelper.visible = value;
+    });
+
+    // Color Mapping
+    gui.add({ showColorMapping: false }, 'showColorMapping').name('See Gravity').onChange(value => {
+        colormapping = value;
+    });
+    gui.add(props, 'start').name('Start');
+    gui.add(props, 'stop').name('Stop & Restart');
+}
+
 
 function onWindowResize() {
     // Update sizes
@@ -245,8 +242,6 @@ function toggleSimulation(running) {
     if (running && simulation.sphereCount > 0) simulation.restart();
     if (!running) simulation.restart();
 }
-let isDragging = false;
-let mouseDown = false;
 
 // Export Crystals ------------------------------
 function exportCrystals(bodies, meshes) {
@@ -309,6 +304,8 @@ function importCrystals(data, simulationInstance) {
 }
 
 // Throw Crystals on Mouse Click ------------------
+let isDragging = false;
+let mouseDown = false;
 
 // Listen for mouse down event
 canvas.addEventListener('mousedown', function () {

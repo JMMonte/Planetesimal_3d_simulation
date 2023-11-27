@@ -11,7 +11,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "ammo.js": "^0.0.10",
     "cannon": "^0.6.2",
     "stats.js": "^0.17.0",
     "three": "^0.158.0"
@@ -20,7 +19,6 @@
     "css-loader": "^6.8.1",
     "dat.gui": "^0.7.9",
     "file-loader": "^6.2.0",
-    "gpu": "^1.0.0",
     "html-webpack-plugin": "^5.5.3",
     "raw-loader": "^4.0.2",
     "stats": "^1.0.0",
