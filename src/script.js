@@ -21,8 +21,15 @@ const stats = new Stats();
 const sizes = { width: window.innerWidth, height: window.innerHeight };
 
 // Camera -----------------------------------
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 10000);
-camera.position.z = 40;
+const camera = new THREE.PerspectiveCamera(
+    75,
+    sizes.width / sizes.height,
+    0.1,
+    10000
+);
+camera.position.x = 200;
+camera.position.y = 200;
+camera.position.z = 200;
 scene.add(camera);
 
 // Renderer ---------------------------------
