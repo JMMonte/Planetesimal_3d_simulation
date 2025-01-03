@@ -19,7 +19,6 @@ Gravity Simulator is a 3D simulation built with Three.js and CANNON.js, providin
 |:---:|:---:|
 | *Collapsing rocks* | *Two systems orbiting each other* |
 
-
 ## Setup
 
 Follow these steps to set up the simulation locally:

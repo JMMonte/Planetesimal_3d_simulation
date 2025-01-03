@@ -1,11 +1,9 @@
-// shaderLoader.js
-
 /**
  * Asynchronously loads a shader file.
- * @param {string} url The URL of the shader file.
- * @returns {Promise<string>} A promise that resolves with the shader code as a string.
+ * @param url The URL of the shader file.
+ * @returns A promise that resolves with the shader code as a string.
  */
-async function loadShader(url) {
+export async function loadShader(url: string): Promise<string> {
     try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -18,4 +16,4 @@ async function loadShader(url) {
     }
 }
 
-export default loadShader;
+export default loadShader; 
