@@ -13,7 +13,7 @@
   "dependencies": {
     "cannon": "^0.6.2",
     "stats.js": "^0.17.0",
-    "three": "^0.158.0"
+    "three": "^0.179.1"
   },
   "devDependencies": {
     "css-loader": "^6.8.1",
